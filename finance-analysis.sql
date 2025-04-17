@@ -1,9 +1,9 @@
 ### Financial Analytics
  
- -- Total rows in sales
+ -- 1. Total rows in sales
  SELECT COUNT(*) AS total_rows FROM gdb0041.fact_sales_monthly;
  
- -- Missing values check
+ -- 2.  Missing values check
  SELECT 
    COUNT(*) AS total_rows,
    COUNT(product_code) AS non_null_product_id,
@@ -11,10 +11,33 @@
    COUNT(sold_quantity) AS non_null_sold_quantity
  FROM gdb0041.fact_sales_monthly;
  
- -- a. first grab customer codes for Croma india
+ -- 3. Gross Monthly Total Sales Report for Croma
+ SELECT
+		s.date,
+		    	round(sum(s.sold_quantity * g.gross_price ) , 2) as gross_price_total
+		FROM gdb0041.fact_sales_monthly s 
+		JOIN gdb0041.fact_gross_price g
+			ON g.product_code = s.product_code and
+			g.fiscal_year  = get_fiscal_year(s.date)
+		WHERE 
+			customer_code = 90002002
+		GROUP BY s.date;
+        
+ -- 4. Yearly Total Gross Sales Report for Croma 
+ SELECT
+			get_fiscal_year(s.date) as fiscal_year,
+			round(sum(s.sold_quantity * g.gross_price )/1000000 , 2) as gross_price_total_mln
+		FROM gdb0041.fact_sales_monthly s 
+		JOIN gdb0041.fact_gross_price g
+			ON g.product_code = s.product_code 	AND
+			   g.fiscal_year  = get_fiscal_year(s.date)
+		WHERE customer_code = 90002002
+		GROUP BY get_fiscal_year(s.date);
+ 
+ -- 5. first grab customer codes for Croma india
  	SELECT * FROM dim_customer WHERE customer like "%croma%" AND market="india";
  
- -- b. Get all the sales transaction data from fact_sales_monthly table for that customer(croma: 90002002) in the fiscal_year 2021
+ -- 6. Get all the sales transaction data from fact_sales_monthly table for that customer(croma: 90002002) in the fiscal_year 2021
  	SELECT * FROM fact_sales_monthly 
  	WHERE 
              customer_code=90002002 AND
@@ -22,7 +45,7 @@
  	ORDER BY date asc
  	LIMIT 100000;
  
- -- c. Replacing the function created in the step:b
+ -- 7. Replacing the function created in the step:b
  	SELECT * FROM fact_sales_monthly 
  	WHERE 
              customer_code=90002002 AND
@@ -30,7 +53,7 @@
  	ORDER BY date asc
  	LIMIT 100000;
  
- -- d. Perform joins to pull product information
+ -- 8. Perform joins to pull product information
  	SELECT s.date, s.product_code, p.product, p.variant, s.sold_quantity 
  	FROM fact_sales_monthly s
  	JOIN dim_product p
@@ -40,7 +63,7 @@
      	    get_fiscal_year(date)=2021     
  	LIMIT 1000000;
  
- -- e. Performing join with 'fact_gross_price' table with the above query and generating required fields
+ -- 9. Performing join with 'fact_gross_price' table with the above query and generating required fields
  	SELECT 
      	    s.date, 
              s.product_code, 
@@ -60,7 +83,7 @@
              get_fiscal_year(s.date)=2021     
  	LIMIT 1000000;
      
- -- f. Retrieve market badge. i.e. if total sold quantity > 5 million that market is considered "Gold" else "Silver"
+ -- 10. Retrieve market badge. i.e. if total sold quantity > 5 million that market is considered "Gold" else "Silver"
  SELECT 
  	DISTINCT(c.customer), sum(s.sold_quantity) as total_sold_quantity,
      c.market,
@@ -73,7 +96,7 @@
  	ON c.customer_code = s.customer_code
  GROUP BY c.customer, c.market;
  
- -- g. Which markets (countries) are most profitable vs least profitable?  Identify which customer markets generate the most/least total profit.
+ -- 11. Which markets (countries) are most profitable vs least profitable?  Identify which customer markets generate the most/least total profit.
  SELECT 
      c.market,
      ROUND(SUM(s.sold_quantity * g.gross_price), 2) AS total_revenue,
@@ -98,7 +121,7 @@
  GROUP BY c.market
  ORDER BY total_profit DESC;
  
- -- h. Find SKUs (unique combinations of product + variant) that have low total sales in every market – so they can be considered for discounting or discontinuation.
+ -- 12. Find SKUs (unique combinations of product + variant) that have low total sales in every market – so they can be considered for discounting or discontinuation.
  SELECT 
      dp.product,
      dp.variant,
